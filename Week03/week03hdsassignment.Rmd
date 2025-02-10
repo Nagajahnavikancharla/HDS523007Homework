@@ -1,0 +1,120 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+install.packages("data.table")
+library(data.table)
+library(foreach)
+library(doParallel)
+```
+
+# defining functions
+```{r}
+haversine <- function(lat1, lon1, lat2, lon2) {
+  miles_constant <- 3959
+  lat1 <- lat1 * pi / 180
+  lon1 <- lon1 * pi / 180
+  lat2 <- lat2 * pi / 180
+  lon2 <- lon2 * pi / 180
+  
+  dlat <- lat2 - lat1
+  dlon <- lon2 - lon1
+  
+  a <- sin(dlat / 2)^2 + cos(lat1) * cos(lat2) * sin(dlon / 2)^2
+  c <- 2 * asin(sqrt(a))
+  
+  return(miles_constant * c)
+}
+```
+
+
+```{r}
+# LoadIng  the clinic.csv file (pipe-delimited)
+df<-fread("C:/Users/Sreeja/Downloads/clinics.csv")
+
+# Setting reference location
+lat_ref <- 40.671
+lon_ref <- -73.985
+```
+
+#using for-loop approach
+```{r}
+start_time <- Sys.time()
+
+# Creating  an empty vector for storing distances
+df$distance_for <- numeric(nrow(df))
+
+# Computing distances using a for-loop
+for (i in 1:nrow(df)) {
+  df$distance_for[i] <- haversine(lat_ref, lon_ref, df$locLat[i], df$locLong[i])
+}
+
+end_time <- Sys.time()
+for_loop_time <- end_time - start_time
+print(paste("For-Loop Execution Time:", for_loop_time))
+```
+# parallel execution using foreach
+```{r}
+```
+
+
+```{r}
+#set for windows
+cl <- makeCluster(detectCores(), type='PSOCK')
+registerDoParallel((cl))
+```
+
+
+```{r}
+set.seed(42)
+```
+
+
+```{r}
+registerDoParallel(cores = detectCores())  # Use all available cores
+
+start_time <- Sys.time()
+
+df$distance_foreach <- foreach(i = 1:nrow(df), .combine = c) %dopar% {
+  haversine(lat_ref, lon_ref, df$locLat[i], df$locLong[i])
+}
+
+end_time <- Sys.time()
+foreach_time <- end_time - start_time
+print(paste("Foreach Execution Time:", foreach_time))
+```
+
+```{r}
+stopCluster(cl)#stopping cluster
+```
+
+```{r}
+start_time <- Sys.time()
+
+# Computing  distances using a vectorized approach
+df[, distance_dt := haversine(lat_ref, lon_ref, locLat, locLong)]
+
+end_time <- Sys.time()
+vectorized_time <- end_time - start_time
+print(paste("Vectorized Execution Time:", vectorized_time))
+```
+
+
+```{r}
+# Creating  a summary table
+results <- data.table(
+  Method = c("For-Loop", "Foreach (Parallel)", "Vectorized data.table"),
+  Execution_Time = c(for_loop_time, foreach_time, vectorized_time)
+)
+
+# Printing  results
+print(results)
+```
+
+#Professor or whoever is grading my assignment,
+
+#My R studio suddenly stopped working while I was workng on the assignment. I tried uninstalling and reinstalling it, but nothing worked. I didnt have any other source, so i completed the assignment using my friends laptop. However, I did not take anyones help in completing the assignment.
